@@ -1,0 +1,10 @@
+{
+    "items": [
+        {
+            "repo": "fonic/recalbox-backport",
+            "file": "recalbox-backport-*.zip",
+            "folder": "recalbox",
+            "innerFolder": "recalbox-backport"
+        }
+    ]
+}

@@ -1,0 +1,29 @@
+{
+    "items": [
+        {
+            "file": "downloads_apidya_ADFs.zip",
+            "url": "http://dream17.abime.net/filage/downloads_apidya_ADFs.zip",
+            "platform": "amiga500"
+        },
+        {
+            "file": "downloads_superfrog_ADFs.zip",
+            "url": "http://dream17.abime.net/filage/downloads_superfrog_ADFs.zip",
+            "platform": "amiga500"
+        },
+        {
+            "file": "Exile_FINAL_ADF [cr Galahad][!].zip",
+            "url": "http://www.thunderpeel2001.com/exile/Exile_FINAL_ADF%20[cr%20Galahad][!].ZIP",
+            "platform": "amiga500"
+        },
+        {
+            "file": "r-type.zip",
+            "url": "http://www.factor5.de/downloads/r-type.zip",
+            "platform": "amiga500"
+        },
+        {
+            "file": "lotus.zip",
+            "url": "http://gremlinworld.emuunlim.com/amiga/lotus.zip",
+            "platform": "amiga500"
+        }
+    ]
+}

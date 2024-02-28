@@ -1,0 +1,60 @@
+{
+    "items": [
+        {
+            "file": "fceumm_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/fceumm_libretro.dll.zip"
+        },
+        {
+            "file": "parallel_n64_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/parallel_n64_libretro.dll.zip"
+        },
+        {
+            "file": "fbalpha2012_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/fbalpha2012_libretro.dll.zip"
+        },
+        {
+            "file": "genesis_plus_gx_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/genesis_plus_gx_libretro.dll.zip"
+        },
+        {
+            "file": "snes9x_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/snes9x_libretro.dll.zip"
+        },
+        {
+            "file": "gambatte_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/gambatte_libretro.dll.zip"
+        },
+        {
+            "file": "gearcoleco_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/gearcoleco_libretro.dll.zip"
+        },
+        {
+            "file": "stella_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/stella_libretro.dll.zip"
+        },
+        {
+            "file": "prosystem_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/prosystem_libretro.dll.zip"
+        },
+        {
+            "file": "vice_x64_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/vice_x64_libretro.dll.zip"
+        },
+        {
+            "file": "fmsx_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/fmsx_libretro.dll.zip"
+        },
+        {
+            "file": "puae_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/puae_libretro.dll.zip"
+        },
+        {
+            "file": "race_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/race_libretro.dll.zip"
+        },
+        {
+            "file": "vba_next_libretro.dll.zip",
+            "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/vba_next_libretro.dll.zip"
+        }
+    ]
+}

@@ -1,0 +1,13 @@
+{
+	"items": [
+		{
+			"url": "https://emulationstation.org/downloads/releases/emulationstation_win32_latest.zip",
+			"file": "emulationstation_win32_latest.zip"
+		},
+        {
+            "repo": "RetroBat-Official/emulationstation",
+            "tag": "continuous-stable",
+            "file": "EmulationStation-Win32.zip"
+        }
+    ]
+}

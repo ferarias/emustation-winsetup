@@ -1,0 +1,48 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "PowerShell: Install script",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${workspaceFolder}/install.ps1",
+            "cwd": "${workspaceFolder}",
+            "args": ["-InstallDir C:\\em", "-CustomRomsFolder C:\\em\\roms"]
+        },
+        {
+            "name": "PowerShell: Uninstall script",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${workspaceFolder}/uninstall.ps1",
+            "cwd": "${workspaceFolder}",
+            "args": ["-InstallDir C:\\em"]
+        },
+        {
+            "name": "PowerShell: Update games script",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${workspaceFolder}/updateGames.ps1",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "-gamesDownloads .\\downloads\\games", 
+                "-gameCacheFolder .\\.cache\\games ",
+                "-RomsFolder C:\\ROM"
+            ]
+        },
+        {
+            "name": "PowerShell: Update tools script",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${workspaceFolder}/updateTools.ps1",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "-toolsDownloads .\\downloads\\tools.json", 
+                "-toolsCacheFolder .\\.cache\\tools ",
+                "-toolsFolder C:\\em\\tools"
+            ]
+        }
+    ]
+}

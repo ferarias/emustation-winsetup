@@ -1,0 +1,16 @@
+{
+    "items": [
+		{
+            "repo": "sselph/scraper",
+            "file": "scraper_windows_amd64.zip",
+            "folder": "scraper"
+        },
+		{
+            "repo": "muldjord/skyscraper",
+            "tag": "3.6.12",
+            "file": "*_win_version.zip",
+            "folder": "Skyscraper",
+            "innerFolder": "Skyscraper_3.6.12_unsupported_win_version"
+        }
+    ]
+}
