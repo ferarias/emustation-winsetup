@@ -11,10 +11,6 @@
 			"innerFolder": "Dolphin-x64"
 		},
 		{
-			"url": "http://www.epsxe.com/files/ePSXe205.zip",
-			"folder": "epsx"
-		},
-		{
 			"url": "https://download.abime.net/winuae/releases/WinUAE5200_x64.zip",
 			"folder": "winuae"
 		},

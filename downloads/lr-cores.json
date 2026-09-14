@@ -55,6 +55,10 @@
         {
             "file": "vba_next_libretro.dll.zip",
             "url": "http://buildbot.libretro.com/nightly/windows/x86_64/latest/vba_next_libretro.dll.zip"
+        },
+        {
+            "file": "mednafen_psx_hw_libretro.dll.zip",
+            "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/mednafen_psx_hw_libretro.dll.zip"
         }
     ]
 }

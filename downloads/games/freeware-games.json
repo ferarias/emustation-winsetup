@@ -1,9 +1,10 @@
 {
     "items": [
         {
-            "file": "Marilyn_In_the_Magic_World_(010a).7z",
-            "url": "https://raw.githubusercontent.com/PublicDomainRoms/public-domain-roms/master/psx/Marilyn_In_the_Magic_World_(010a).7z",
-            "platform": "psx"
+            "file": "marilyn_v012a.zip",
+            "url": "https://archive.org/download/marilyn_v012a/marilyn_v012a.zip",
+            "platform": "psx",
+            "innerFolder": "marilyn_v012a"
         },
         {
             "file": "Classic Kong Complete (U).smc",

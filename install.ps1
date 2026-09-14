@@ -181,6 +181,13 @@ try {
     Copy-Item -Path $newDolphinConfigFile -Destination $dolphinConfigFile -Force
     (Get-Content $dolphinConfigFile) -replace "{ESSystemsPath}", $ESSystemsPath | Set-Content $dolphinConfigFile
 
+    # PCSX2 system configuration
+    $ps2Binary = [Path]::Combine($ESSystemsPath, "pcsx2", "pcsx2-qt.exe")
+
+    # CEMU system configuration
+    $cemuFolder = [Path]::Combine($ESSystemsPath, "cemu")
+    $cemuBinary = [Path]::Combine($cemuFolder, "Cemu.exe")
+
     # EMULATION STATION CONFIGURATION
     # Set EmulationStation available systems (es_systems.cfg)
     $ESSystemsConfigPath = "$ESDataFolder/es_systems.cfg"
@@ -208,12 +215,12 @@ try {
         "neogeo"       = @("Neo Geo", ".zip .ZIP", "$retroarchExecutable -L $retroArchCoresPath\fbalpha2012_libretro.dll %ROM%", "neogeo", "neogeo");
         "nes"          = @("Nintendo Entertainment System", ".nes .NES", "$retroarchExecutable -L $retroArchCoresPath\fceumm_libretro.dll %ROM%", "nes", "nes");
         "ngp"          = @("Neo Geo Pocket", ".ngp .ngc .zip .ZIP", "$retroarchExecutable -L $retroArchCoresPath\race_libretro.dll %ROM%", "ngp", "ngp");
-        "ps2"          = @("Playstation 2", ".iso .img .bin .mdf .z .z2 .bz2 .dump .cso .ima .gz", "${ps2Binary} %ROM% --fullscreen --nogui", "ps2", "ps2");
-        "psx"          = @("Playstation", ".cue .iso .pbp .CUE .ISO .PBP", "${psxEmulatorPath}ePSXe.exe -bios ${psxBiosPath}SCPH1001.BIN -nogui -loadbin %ROM%", "psx", "psx");
+        "ps2"          = @("Playstation 2", ".iso .img .bin .mdf .z .z2 .bz2 .dump .cso .ima .gz", "`"$ps2Binary`" %ROM% --fullscreen --nogui", "ps2", "ps2");
+        "psx"          = @("Playstation", ".cue .toc .m3u .ccd .exe .pbp .PBP .chd", "$retroarchExecutable -L $retroArchCoresPath\mednafen_psx_hw_libretro.dll %ROM%", "psx", "psx");
         "scummvm"      = @("ScummVM", ".bat .BAT", "%ROM%", "pc", "scummvm");
         "snes"         = @("Super Nintendo", ".smc .sfc .fig .swc .SMC .SFC .FIG .SWC", "$retroarchExecutable -L $retroArchCoresPath\snes9x_libretro.dll %ROM%", "snes", "snes");
         "wii"          = @("Nintendo Wii", ".iso .ISO .wad .WAD", "$dolphinBinary -e `"%ROM_RAW%`"", "wii", "wii");
-        "wiiu"         = @("Nintendo Wii U", ".rpx .RPX", "START /D $cemuBinary -f -g `"%ROM_RAW%`"", "wiiu", "wiiu");
+        "wiiu"         = @("Nintendo Wii U", ".rpx .RPX", "START /D `"$cemuFolder`" `"$cemuBinary`" -f -g `"%ROM_RAW%`"", "wiiu", "wiiu");
     }
     Write-ESSystemsConfig $ESSystemsConfigPath $systems $RomsFolder
 

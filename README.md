@@ -59,8 +59,9 @@ FINISHED SETUP!
 ## Troubleshooting
 
 - _Controller is not working in games_: configure Input in Retroarch (in EmulationStation\\.emulationstation\systems\retroarch\retroarch.exe)
-- _PSX and PS2 Homebrew Games don't work_: they won't load unless you acquire the bios's and add them to the bios folder (EmulationStation\\.emulationstation\systems\epsxe\bios and EmulationStation\\.emulationstation\systems\pcsx2\bios).  
-  PSX and PS2 also require manual configuration for controllers (EmulationStation\\.emulationstation\systems\epsxe\ePSXe.exe and EmulationStation\.emulationstation\systems\pcsx2\pcsx2.exe)
+- _PS2 Homebrew Games don't work_: they won't load unless you acquire the bios and add it to the bios folder (`EmulationStation\.emulationstation\systems\pcsx2\bios`).  
+  PS2 also requires manual configuration for controllers (`EmulationStation\.emulationstation\systems\pcsx2\pcsx2-qt.exe`).  
+- _PSX Emulation_: PSX runs via RetroArch using the Beetle PSX HW (`mednafen_psx_hw`) core. Standard BIOS files (`scph5500.bin`, `scph5501.bin`, `scph5502.bin`) are automatically installed into RetroArch's system folder (`EmulationStation\.emulationstation\systems\retroarch\system`).  
 - _Script fails_: if the script fails for whatever reason, delete the contents of EmulationStation\\.emulationstation and try again.  
   Ensure you are using Microsoft Powershell and not Windows Powershell and that your Powershell session is in Admin mode.
 - If you are using Xbox controllers and having trouble setting the guide button as hotkey, locate the file (EmulationStation\\.emulationstation\es_input.cfg and change the line for hotkeyenable to ```<input id="5" name="hotkeyenable" type="button" value="10" />```
