@@ -1,17 +1,17 @@
 [CmdletBinding()]
 param (
-    [Parameter(Mandatory)]
-    [String]
-    $gamesDownloads,
+    [Parameter(Mandatory = $true)]
+    [String]$gamesDownloads,
 
-    [Parameter(Mandatory)]
-    [String]
-    $gameCacheFolder,
+    [Parameter(Mandatory = $true)]
+    [String]$gameCacheFolder,
 
-    [Parameter(Mandatory)]
-    [String]
-    $RomsFolder
+    [Parameter(Mandatory = $true)]
+    [String]$RomsFolder
 )
+
+$ErrorActionPreference = "Stop"
+$ProgressPreference = 'SilentlyContinue'
 
 . (Join-Path $PSScriptRoot functions.ps1)
 
@@ -19,50 +19,54 @@ param (
 # ## OPEN-SOURCE/FREEWARE ROMS INSTALLATION
 # #############################################################################
 Write-Host -ForegroundColor DarkYellow "INSTALLING SOME FREEWARE ROMS"
-# Acquire required files and leave them in a folder for later use
-# Look into the downloads/games folder to see what downloads are configured
 Write-Host "Creating ROM directories and filling with freeware ROMs in $RomsFolder"
 
-Write-Host "INFO: Obtaining Freeware Games lists in folder: $($gamesDownloads) and caching in $gameCacheFolder."
-New-Item -ItemType Directory -Force -Path $gameCacheFolder | Out-Null
+if (-not (Test-Path -LiteralPath $gameCacheFolder)) {
+    New-Item -ItemType Directory -Force -Path $gameCacheFolder | Out-Null
+}
 
-Get-ChildItem $gamesDownloads -Filter "*.json" | ForEach-Object {
-    Write-Host -ForegroundColor DarkGreen "Downloading and caching freeware ROMs from: $_"
-    Get-RemoteFiles $_.FullName $gameCacheFolder
+Write-Host "INFO: Obtaining Freeware Games lists in folder: $gamesDownloads and caching in $gameCacheFolder."
 
-    Get-Content $_.FullName | ConvertFrom-Json | Select-Object -ExpandProperty items | ForEach-Object {
-        if ([String]::IsNullOrEmpty( $_.file ) ) {
-            continue;
+Get-ChildItem -LiteralPath $gamesDownloads -Filter "*.json" | ForEach-Object {
+    Write-Host -ForegroundColor DarkGreen "Downloading and caching freeware ROMs from: $($_.FullName)"
+    Get-RemoteFiles -jsonFile $_.FullName -localCacheFolder $gameCacheFolder
+
+    $jsonContent = Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json
+    $items = if ($jsonContent.PSObject.Properties['items']) { $jsonContent.items } else { $jsonContent }
+
+    foreach ($item in $items) {
+        if ([string]::IsNullOrWhiteSpace($item.file)) {
+            continue
         }
-        $sourceFile = [Path]::Combine($gameCacheFolder, $_.file)
-        $targetFolder = [Path]::Combine($RomsFolder, $_.platform)
-        $innerFolder = $_.innerFolder
-        if ((Test-Path $targetFolder) -ne $true) {
+        $sourceFile = Join-Path $gameCacheFolder $item.file
+        $targetFolder = Join-Path $RomsFolder $item.platform
+        $innerFolder = $item.innerFolder
+
+        if (-not (Test-Path -LiteralPath $targetFolder)) {
             New-Item -ItemType Directory -Force -Path $targetFolder | Out-Null
         }
+
         if (Test-Path -LiteralPath $sourceFile) {
-            if ( $sourceFile.EndsWith("zip") -or $sourceFile.EndsWith("7z") -or $sourceFile.EndsWith("gz") ) {
-                Expand-PackedFile $sourceFile $targetFolder $innerFolder
+            $ext = [System.IO.Path]::GetExtension($sourceFile).TrimStart('.').ToLower()
+            if ($CompressedFileExtensions -contains $ext) {
+                Expand-PackedFile -archiveFile $sourceFile -targetFolder $targetFolder -zipFolderToCopy $innerFolder
             }
             else {
-                Copy-Item -Path $sourceFile -Destination $targetFolder -Force | Out-Null
+                Copy-Item -LiteralPath $sourceFile -Destination $targetFolder -Force | Out-Null
             }
         }
         else {
-            Write-Host -ForegroundColor Red "Warning: $sourceFile not found."
+            Write-Host -ForegroundColor Yellow "Warning: $sourceFile not found."
         }
     }
 }
 
-# TODO: find and test freeware games for these emulators.
-Write-Host "INFO: Creating empty ROM directories $path"
-New-Item -ItemType Directory -Force -Path "$RomsFolder\atari7800" | Out-Null
-New-Item -ItemType Directory -Force -Path "$RomsFolder\c64" | Out-Null
-New-Item -ItemType Directory -Force -Path "$RomsFolder\fba" | Out-Null
-New-Item -ItemType Directory -Force -Path "$RomsFolder\gb" | Out-Null
-New-Item -ItemType Directory -Force -Path "$RomsFolder\gc" | Out-Null
-New-Item -ItemType Directory -Force -Path "$RomsFolder\mame" | Out-Null
-New-Item -ItemType Directory -Force -Path "$RomsFolder\msx" | Out-Null
-New-Item -ItemType Directory -Force -Path "$RomsFolder\neogeo" | Out-Null
-New-Item -ItemType Directory -Force -Path "$RomsFolder\wiiu" | Out-Null
-New-Item -ItemType Directory -Force -Path "$RomsFolder\scummvm" | Out-Null
+# Ensure empty ROM directories exist for supported emulators
+Write-Host "INFO: Creating empty ROM directories in $RomsFolder"
+$standardSystems = @("atari7800", "c64", "fba", "gb", "gc", "mame", "msx", "neogeo", "wiiu", "scummvm")
+foreach ($sys in $standardSystems) {
+    $sysPath = Join-Path $RomsFolder $sys
+    if (-not (Test-Path -LiteralPath $sysPath)) {
+        New-Item -ItemType Directory -Force -Path $sysPath | Out-Null
+    }
+}

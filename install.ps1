@@ -3,14 +3,17 @@ using namespace System.IO
 
 [CmdletBinding()]
 param (
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory = $true)]
     [String]
     $InstallDir,
 
-    [Parameter()]
+    [Parameter(Mandatory = $false)]
     [String]
     $CustomRomsFolder
 )
+
+$ErrorActionPreference = "Stop"
+$ProgressPreference = 'SilentlyContinue'
 
 . (Join-Path $PSScriptRoot functions.ps1)
 
@@ -22,10 +25,26 @@ try {
     # SETUP BASIC STUFF
     # #############################################################################
     Write-Host -ForegroundColor DarkYellow "SETTING UP REQUIRED PATHS"
-    # Setup some basic directories and stuff
     Write-Host "INFO: Running from $PSScriptRoot"
+
+    # Normalize to absolute path
+    $InstallDir = [System.IO.Path]::GetFullPath($InstallDir)
+    
+    # Guard against accidental installation into root or system directories
+    $forbiddenRoots = @(
+        [System.IO.Path]::GetPathRoot($InstallDir),
+        $env:SystemRoot,
+        $env:ProgramFiles,
+        ${env:ProgramFiles(x86)},
+        $env:USERPROFILE
+    )
+    if ($forbiddenRoots -contains $InstallDir) {
+        throw "ERROR: Cannot install directly to a protected or system root directory: $InstallDir"
+    }
+
     New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
     Write-Host "INFO: Install directory is $InstallDir"
+
     # Create a folder for caching downloads
     $CacheFolder = [Path]::Combine("$PSScriptRoot", ".cache")
     Write-Host "INFO: Cache directory is: $CacheFolder"
@@ -37,16 +56,27 @@ try {
     $ToolsFolder = [Path]::Combine($InstallDir, "tools")
     Write-Host "INFO: Additional tools directory is $ToolsFolder"
 
-    # 7-zip
-    if (!(Get-MyModule -name "7Zip4Powershell")) { 
-        Write-Host -ForegroundColor Cyan "Installing required 7zip module in Powershell"
-        Install-Module -Name "7Zip4Powershell" -Scope CurrentUser -Force 
+    # 7-zip discovery or installation
+    $existing7z = Find-7ZipExe
+    if ($existing7z) {
+        $GLOBAL_7ZIP_EXE = $existing7z
+        Write-Host "INFO: Using existing 7-zip executable at $GLOBAL_7ZIP_EXE"
     }
-    $sevenZipPath = "$CacheFolder\7z\"
-    Invoke-WebRequest "https://www.7-zip.org/a/7z2301-x64.exe" -Out "$CacheFolder\7z2301-x64.exe"
-    Expand-7Zip -ArchiveFileName "$CacheFolder\7z2301-x64.exe" -TargetPath $sevenZipPath
-    $GLOBAL_7ZIP_EXE = "$($sevenZipPath)7z.exe"
-    Write-Host "INFO: 7zip executable installed to $GLOBAL_7ZIP_EXE"
+    else {
+        $sevenZipPath = [Path]::Combine($CacheFolder, "7z")
+        $sevenZipExe = [Path]::Combine($sevenZipPath, "7z.exe")
+        if (!(Test-Path -LiteralPath $sevenZipExe)) {
+            if (!(Get-MyModule -name "7Zip4Powershell")) { 
+                Write-Host -ForegroundColor Cyan "Installing required 7zip module in Powershell"
+                Install-Module -Name "7Zip4Powershell" -Scope CurrentUser -Force 
+            }
+            $installer7z = [Path]::Combine($CacheFolder, "7z2301-x64.exe")
+            Invoke-ResilientDownload -Url "https://www.7-zip.org/a/7z2301-x64.exe" -OutputFile $installer7z
+            Expand-7Zip -ArchiveFileName $installer7z -TargetPath $sevenZipPath
+        }
+        $GLOBAL_7ZIP_EXE = $sevenZipExe
+        Write-Host "INFO: 7zip executable installed to $GLOBAL_7ZIP_EXE"
+    }
 
     # Determine the ROMs directory
     if ([String]::IsNullOrEmpty($CustomRomsFolder)) {
@@ -54,7 +84,8 @@ try {
         New-Item -ItemType Directory -Force -Path $RomsFolder | Out-Null
     }
     else {
-        if (-Not (Test-Path -Path $CustomRomsFolder)) {
+        $CustomRomsFolder = [System.IO.Path]::GetFullPath($CustomRomsFolder)
+        if (-Not (Test-Path -LiteralPath $CustomRomsFolder)) {
             Write-Host "INFO: Custom ROMs folder $CustomRomsFolder does not exist. Creating it."
             New-Item -ItemType Directory -Force -Path $CustomRomsFolder | Out-Null
         }
@@ -63,7 +94,6 @@ try {
     Write-Host "INFO: ROMs directory is $RomsFolder"
 
     # Set the files that will be downloaded in each section
-    # You can take a look at the "downloads" folder to see which downloads are configured
     $downloadsFolder = [Path]::Combine("$PSScriptRoot", "downloads")
     Write-Host "INFO: Downloads directory is: $downloadsFolder."
     $downloads = @{ 
@@ -128,48 +158,58 @@ try {
     Get-RemoteFiles $downloads.Lrcores $CacheFolder $retroArchCoresPath
 
     # Start Retroarch and generate a config.
-    if (Test-Path $retroarchExecutable) {
-    
-        Write-Host "Retroarch executable found, launching"
-        Start-Process $retroarchExecutable
-    
-        while (!(Test-Path $retroarchConfigPath)) { 
-            Write-Host "Checking for retroarch config file $retroarchConfigPath"
-            Start-Sleep 5
+    if (Test-Path -LiteralPath $retroarchExecutable) {
+        Write-Host "Retroarch executable found, launching to generate initial configuration..."
+        $retroarchProc = Start-Process -FilePath $retroarchExecutable -PassThru
+
+        $timeoutSeconds = 30
+        $elapsed = 0
+        while (!(Test-Path -LiteralPath $retroarchConfigPath) -and $elapsed -lt $timeoutSeconds) { 
+            if ($retroarchProc.HasExited) {
+                throw "RetroArch process exited prematurely with code $($retroarchProc.ExitCode) before creating $retroarchConfigPath"
+            }
+            Write-Host "Checking for retroarch config file $retroarchConfigPath ($elapsed/$timeoutSeconds s)..."
+            Start-Sleep -Seconds 2
+            $elapsed += 2
         }
 
-        $retroarchProcess = Get-Process -Name "*retroarch*" -Verbose
-        if ($retroarchProcess) {
-            $retroarchProcess.CloseMainWindow()
-            Start-sleep 5
-            if (!$retroarchProcess.HasExited) {
-                $retroarchProcess | Stop-Process -Force
+        if (!(Test-Path -LiteralPath $retroarchConfigPath)) {
+            if (!$retroarchProc.HasExited) { $retroarchProc | Stop-Process -Force }
+            throw "Timed out waiting for RetroArch config file at $retroarchConfigPath"
+        }
+
+        if (!$retroarchProc.HasExited) {
+            $retroarchProc.CloseMainWindow() | Out-Null
+            Start-Sleep -Seconds 2
+            if (!$retroarchProc.HasExited) {
+                $retroarchProc | Stop-Process -Force
             }
         }
-
     }
     else {
         Write-Host -ForegroundColor Red "ERROR: Could not find $retroarchExecutable"
         exit -1
     }
 
-    # Tweak retroarch config!
-    Write-Host -ForegroundColor Cyan "Replacing RetroArch config"
-    $settingToFind = 'video_fullscreen = "false"'
-    $settingToSet = 'video_fullscreen = "true"'
-    (Get-Content $retroarchConfigPath) -replace $settingToFind, $settingToSet | Set-Content $retroarchConfigPath
-
-    $settingToFind = 'savestate_auto_load = "false"'
-    $settingToSet = 'savestate_auto_load = "true"'
-    (Get-Content $retroarchConfigPath) -replace $settingToFind, $settingToSet | Set-Content $retroarchConfigPath
-
-    $settingToFind = 'input_player1_analog_dpad_mode = "0"'
-    $settingToSet = 'input_player1_analog_dpad_mode = "1"'
-    (Get-Content $retroarchConfigPath) -replace $settingToFind, $settingToSet | Set-Content $retroarchConfigPath
-
-    $settingToFind = 'input_player2_analog_dpad_mode = "0"'
-    $settingToSet = 'input_player2_analog_dpad_mode = "1"'
-    (Get-Content $retroarchConfigPath) -replace $settingToFind, $settingToSet | Set-Content $retroarchConfigPath
+    # Tweak retroarch config in a single pass
+    Write-Host -ForegroundColor Cyan "Configuring RetroArch settings in $retroarchConfigPath"
+    $raContent = Get-Content -LiteralPath $retroarchConfigPath -Raw
+    $raSettings = @{
+        'video_fullscreen'             = '"true"'
+        'savestate_auto_load'          = '"true"'
+        'input_player1_analog_dpad_mode' = '"1"'
+        'input_player2_analog_dpad_mode' = '"1"'
+    }
+    foreach ($kv in $raSettings.GetEnumerator()) {
+        $regex = "(?m)^$($kv.Key)\s*=.*$"
+        if ($raContent -match $regex) {
+            $raContent = [regex]::Replace($raContent, $regex, "$($kv.Key) = $($kv.Value)")
+        }
+        else {
+            $raContent += "`r`n$($kv.Key) = $($kv.Value)"
+        }
+    }
+    Set-Content -LiteralPath $retroarchConfigPath -Value $raContent
 
     # DOLPHIN system configuration
     $dolphinBinary = "$ESSystemsPath/dolphin/Dolphin.exe"
@@ -179,7 +219,15 @@ try {
     $dolphinConfigFile = "$ESSystemsPath/dolphin/User/Config/Dolphin.ini"
     $newDolphinConfigFile = [Path]::Combine($PSScriptRoot, "configs", "Dolphin.ini")
     Copy-Item -Path $newDolphinConfigFile -Destination $dolphinConfigFile -Force
-    (Get-Content $dolphinConfigFile) -replace "{ESSystemsPath}", $ESSystemsPath | Set-Content $dolphinConfigFile
+    $dolphinConfigContent = (Get-Content -LiteralPath $dolphinConfigFile -Raw).Replace("{ESSystemsPath}", $ESSystemsPath)
+    Set-Content -LiteralPath $dolphinConfigFile -Value $dolphinConfigContent
+
+    # PCSX2 system configuration
+    $ps2Binary = [Path]::Combine($ESSystemsPath, "pcsx2", "pcsx2-qt.exe")
+
+    # CEMU system configuration
+    $cemuFolder = [Path]::Combine($ESSystemsPath, "cemu")
+    $cemuBinary = [Path]::Combine($cemuFolder, "Cemu.exe")
 
     # EMULATION STATION CONFIGURATION
     # Set EmulationStation available systems (es_systems.cfg)
@@ -208,12 +256,12 @@ try {
         "neogeo"       = @("Neo Geo", ".zip .ZIP", "$retroarchExecutable -L $retroArchCoresPath\fbalpha2012_libretro.dll %ROM%", "neogeo", "neogeo");
         "nes"          = @("Nintendo Entertainment System", ".nes .NES", "$retroarchExecutable -L $retroArchCoresPath\fceumm_libretro.dll %ROM%", "nes", "nes");
         "ngp"          = @("Neo Geo Pocket", ".ngp .ngc .zip .ZIP", "$retroarchExecutable -L $retroArchCoresPath\race_libretro.dll %ROM%", "ngp", "ngp");
-        "ps2"          = @("Playstation 2", ".iso .img .bin .mdf .z .z2 .bz2 .dump .cso .ima .gz", "${ps2Binary} %ROM% --fullscreen --nogui", "ps2", "ps2");
-        "psx"          = @("Playstation", ".cue .iso .pbp .CUE .ISO .PBP", "${psxEmulatorPath}ePSXe.exe -bios ${psxBiosPath}SCPH1001.BIN -nogui -loadbin %ROM%", "psx", "psx");
+        "ps2"          = @("Playstation 2", ".iso .img .bin .mdf .z .z2 .bz2 .dump .cso .ima .gz", "`"$ps2Binary`" %ROM% --fullscreen --nogui", "ps2", "ps2");
+        "psx"          = @("Playstation", ".cue .toc .m3u .ccd .exe .pbp .PBP .chd", "$retroarchExecutable -L $retroArchCoresPath\mednafen_psx_hw_libretro.dll %ROM%", "psx", "psx");
         "scummvm"      = @("ScummVM", ".bat .BAT", "%ROM%", "pc", "scummvm");
         "snes"         = @("Super Nintendo", ".smc .sfc .fig .swc .SMC .SFC .FIG .SWC", "$retroarchExecutable -L $retroArchCoresPath\snes9x_libretro.dll %ROM%", "snes", "snes");
         "wii"          = @("Nintendo Wii", ".iso .ISO .wad .WAD", "$dolphinBinary -e `"%ROM_RAW%`"", "wii", "wii");
-        "wiiu"         = @("Nintendo Wii U", ".rpx .RPX", "START /D $cemuBinary -f -g `"%ROM_RAW%`"", "wiiu", "wiiu");
+        "wiiu"         = @("Nintendo Wii U", ".rpx .RPX", "START /D `"$cemuFolder`" `"$cemuBinary`" -f -g `"%ROM_RAW%`"", "wiiu", "wiiu");
     }
     Write-ESSystemsConfig $ESSystemsConfigPath $systems $RomsFolder
 
@@ -222,7 +270,8 @@ try {
     Write-Host -ForegroundColor Cyan "Generating ES settings file at $ESSettingsFile"
     $newEsConfigFile = [Path]::Combine($PSScriptRoot, "configs", "es_settings.cfg")
     Copy-Item -Path $newEsConfigFile -Destination $ESSettingsFile -Force
-    (Get-Content $ESSettingsFile) -replace "{ESInstallFolder}", $ESRootFolder | Set-Content $ESSettingsFile
+    $esSettingsContent = (Get-Content -LiteralPath $ESSettingsFile -Raw).Replace("{ESInstallFolder}", $ESRootFolder)
+    Set-Content -LiteralPath $ESSettingsFile -Value $esSettingsContent
 
     # Set EmulationStation default keyboard mapping (es_input.cfg)
     $esInputConfigFile = "$ESDataFolder\es_input.cfg"
@@ -236,9 +285,12 @@ try {
     $toolsCacheFolder = $(Join-Path -Path $CacheFolder -ChildPath "tools")
     & (Join-Path $PSScriptRoot updateTools.ps1) -toolsDownloads $downloads.Tools -toolsCacheFolder $toolsCacheFolder -ToolsFolder $ToolsFolder
 
-    # Add an scraper to ROMs folder
-    Write-Host -ForegroundColor Cyan "Installing scraper in $RomsFolder"
-    Copy-Item -Path "$ToolsFolder\scraper\scraper.exe" -Destination $RomsFolder
+    # Add scraper to ROMs folder if available
+    $scraperExe = [Path]::Combine($ToolsFolder, "scraper", "scraper.exe")
+    if (Test-Path -LiteralPath $scraperExe) {
+        Write-Host -ForegroundColor Cyan "Installing scraper in $RomsFolder"
+        Copy-Item -LiteralPath $scraperExe -Destination $RomsFolder -Force
+    }
 
     # #############################################################################
     # CREATING SHORTCUTS
@@ -249,14 +301,12 @@ try {
     $ESIconPath = [Path]::Combine($ESRootFolder, "icon.ico")
     $ESPortableBat = [Path]::Combine($ESRootFolder, $ESBatName)
     $ESPortableWindowedBat = [Path]::Combine($ESRootFolder, $ESBatWindowed)
-    if (!(Test-Path $ESPortableBat)) {
-        $batContents = "set HOME=%~dp0
-    emulationstation.exe"
+    if (!(Test-Path -LiteralPath $ESPortableBat)) {
+        $batContents = "set HOME=%~dp0`r`nemulationstation.exe"
         New-Item -Path $ESRootFolder -Name $ESBatName -ItemType File -Value $batContents | Out-Null
     }
-    if (!(Test-Path $ESPortableWindowedBat)) {
-        $batContents = "set HOME=%~dp0
-    emulationstation.exe --resolution 960 720 --windowed"
+    if (!(Test-Path -LiteralPath $ESPortableWindowedBat)) {
+        $batContents = "set HOME=%~dp0`r`nemulationstation.exe --resolution 960 720 --windowed"
         New-Item -Path $ESRootFolder -Name $ESBatWindowed -ItemType File -Value $batContents | Out-Null
     }
 
